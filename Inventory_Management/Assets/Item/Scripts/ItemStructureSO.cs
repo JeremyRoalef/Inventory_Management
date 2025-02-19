@@ -26,6 +26,10 @@ public class ItemStructureSO : ScriptableObject
         "should be contained in the structure, and 0 if the element should not be contained for the structure." +
         "Create the structure from the top-left-most node (element 0,0) and work from there.")]
     List<IntArrayWrapper> itemStructure;
+    public List<IntArrayWrapper> ItemStructure
+    {
+        get { return itemStructure; }
+    }
 
 
     private string objectName;
