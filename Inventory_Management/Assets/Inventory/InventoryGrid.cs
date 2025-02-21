@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
@@ -11,7 +12,7 @@ public class InventoryGrid : MonoBehaviour
 
     List<GameObject> itemSlots = new List<GameObject>();
 
-    private void Awake()
+    void Awake()
     {
         InitializeInventoryGrid();
         //DebugItemSlotMethods();
@@ -59,16 +60,16 @@ public class InventoryGrid : MonoBehaviour
             //}
         }
 
-        Debug.Log("Displaying list of item slots...");
-        foreach (GameObject item in itemSlots)
-        {
-            string output = item.name + ": Index at ";
-            if (item.TryGetComponent<ItemSlot>(out ItemSlot itemSlot))
-            {
-                output += $"{itemSlot.Index}";
-                Debug.Log(output);
-            }
-        }
+        //Debug.Log("Displaying list of item slots...");
+        //foreach (GameObject item in itemSlots)
+        //{
+        //    string output = item.name + ": Index at ";
+        //    if (item.TryGetComponent<ItemSlot>(out ItemSlot itemSlot))
+        //    {
+        //        output += $"{itemSlot.Index}";
+        //        Debug.Log(output);
+        //    }
+        //}
     }
 
     void SetItemSlotIndex(GameObject itemSlotObj, int index)
@@ -82,6 +83,24 @@ public class InventoryGrid : MonoBehaviour
         {
             Debug.LogWarning($"{itemSlotObj.name} does not have referenced script.");
         }
+    }
+
+    //Method for adding item to inventory (No index given).
+    public bool TryAddingItem(ItemSO item)
+    {
+        bool itemWasAdded = false;
+        for (int i = 0; i < itemSlots.Count; i++)
+        {
+            itemWasAdded = TryAddingItem(item, i);
+            if (itemWasAdded) { break; }
+        }
+        return itemWasAdded;
+    }
+    //Method for adding item to inventory given the index.
+    public bool TryAddingItem(ItemSO item, int index)
+    {
+        bool itemWasAdded = false;
+        return itemWasAdded;
     }
 
     /*
@@ -257,4 +276,5 @@ public class InventoryGrid : MonoBehaviour
             }
         }
     }
+
 }

@@ -14,7 +14,7 @@ using UnityEngine;
 [Serializable]
 public class IntArrayWrapper
 {
-    public int[] row;
+    public int[] column;
 }
 
 
@@ -56,23 +56,19 @@ public class ItemStructureSO : ScriptableObject
         }
 
         //Test if pivot point exists
-        if (itemStructure[0].row.Length == 0)
+        if (itemStructure[0].column.Length == 0)
         {
             Debug.Log($"Pivot row (row at element 0) does not exist for {name}. Need row at element 0 for item structure");
             return;
         }
 
-        if (itemStructure[0].row[0] == 0)
+        if (itemStructure[0].column[0] == 0)
         {
             Debug.Log($"No pivot node for {name}. (node at 0,0 does not exist)");
             return;
         }
 
-        if (TestNodeConnections())
-        {
-            Debug.Log($"Item structure {name} is fully connected");
-        }
-        else
+        if (!TestNodeConnections())
         {
             Debug.Log($"There are nodes that do not connect to pivot in {name}");
         }
@@ -88,9 +84,9 @@ public class ItemStructureSO : ScriptableObject
         //Get the number of nodes in the item structure
         for (int row = 0; row < itemStructure.Count; row++)
         {
-            for (int col = 0; col < itemStructure[row].row.Length; col++)
+            for (int col = 0; col < itemStructure[row].column.Length; col++)
             {
-                if (itemStructure[row].row[col] == 1)
+                if (itemStructure[row].column[col] == 1)
                 {
                     numberOfNodes++;
                 }
@@ -133,14 +129,14 @@ public class ItemStructureSO : ScriptableObject
                 //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of x-coordinate");
                 continue;
             }
-            if (yPosition < 0 || yPosition >= itemStructure[xPosition].row.Length) 
+            if (yPosition < 0 || yPosition >= itemStructure[xPosition].column.Length) 
             {
                 //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of y-coordinate");
                 continue; 
             }
 
             //If the value of the node at the given coordinates equals 1, add to queue
-            if (itemStructure[xPosition].row[yPosition] == 1)
+            if (itemStructure[xPosition].column[yPosition] == 1)
             {
                 //Debug.Log($"Node at position ({xPosition}, {yPosition}) is part of structure. Adding to queue & reached nodes");
                 nodesToConnect.Enqueue(new Vector2Int(xPosition,yPosition));
@@ -178,7 +174,7 @@ public class ItemStructureSO : ScriptableObject
                     //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of x-coordinate");
                     continue;
                 }
-                if (yPosition < 0 || yPosition >= itemStructure[xPosition].row.Length) 
+                if (yPosition < 0 || yPosition >= itemStructure[xPosition].column.Length) 
                 {
                     //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of y-coordinate");
                     continue;
@@ -200,7 +196,7 @@ public class ItemStructureSO : ScriptableObject
 
                 //If the value of the node at the given coordinates equals 1, add to queue, it's been reached, and reduce remaining
                 //number of nodes in structure
-                if (itemStructure[xPosition].row[yPosition] == 1)
+                if (itemStructure[xPosition].column[yPosition] == 1)
                 {
                     //Debug.Log($"Node at position ({xPosition}, {yPosition}) is part of structure. Adding to queue & to reached nodes");
                     nodesToConnect.Enqueue(new Vector2Int(xPosition, yPosition));
@@ -224,10 +220,10 @@ public class ItemStructureSO : ScriptableObject
             //Display nodes not connected
             for (int row = 0; row < itemStructure.Count; row++)
             {
-                for (int col = 0; col < itemStructure[row].row.Length; col++)
+                for (int col = 0; col < itemStructure[row].column.Length; col++)
                 {
                     Vector2Int pos = new Vector2Int(row, col);
-                    if (!reachedPositions.Contains(pos) && itemStructure[row].row[col] == 1)
+                    if (!reachedPositions.Contains(pos) && itemStructure[row].column[col] == 1)
                     {
                         Debug.Log($"Scriptable object name: {name}\n" +
                             $"Node in row {pos.x}, element {pos.y} is not connected to pivot");
@@ -248,13 +244,208 @@ public class ItemStructureSO : ScriptableObject
         if (itemStructure == null || itemStructure.Count == 0) {return false;}
 
         //Test if pivot point exists
-        if (itemStructure[0].row.Length == 0) {return false;}
-        if (itemStructure[0].row[0] == 0) {return false;}
+        if (itemStructure[0].column.Length == 0) {return false;}
+        if (itemStructure[0].column[0] == 0) {return false;}
 
         //Test if all nodes connect to pivot point
         if (!TestNodeConnections()) {return false;}
 
         //Struture is valid
         return true;
+    }
+
+    //Method to translate the 0s and 1s in the item structure into item nodes for easier item structure traversal
+    public ItemNode TranslateItemStructureToNodes()
+    {
+        //Do not translate structure if the connections are faulty
+        if (!IsValidStructure())
+        {
+            Debug.LogWarning($"Cannot use {name} because item structure is not valid");
+            return null;
+        }
+
+        //Create pivot node
+        ItemNode pivotNode = new ItemNode();
+
+        //Debug.Log($"Testing item structure {name}...");
+
+        //Create item nodes based on the number of nodes
+
+        //list of reached positions in the structure that are part of the structure
+        List<Vector2Int> reachedPositions = new List<Vector2Int>();
+
+        //Queue of nodes to initialize. WARNING: MUST DEQUEUE BOTH QUEUES AT THE SAME TIME OR IT FAILS!!!
+        Queue<ItemNode> nextNode = new Queue<ItemNode>();
+        Queue<Vector2Int> nextNodePosition = new Queue<Vector2Int>();
+
+        //Directions for connecting
+        Vector2Int[] directions = {
+            new Vector2Int(-1,0), //left
+            new Vector2Int(0,1), //down
+            new Vector2Int(1,0), //right
+            new Vector2Int(0,-1) //up
+        };
+
+        //Create node connections
+        reachedPositions.Add(new Vector2Int(0, 0));
+
+        //Debug.Log($"Exploring directions...");
+        foreach (Vector2Int direction in directions)
+        {
+            //get neighbor node position
+            int xPosition = 0 + direction.x;
+            int yPosition = 0 + direction.y;
+
+            //If either are negative or greater than the length of structure, then continue to next direction
+            //(the direction is not in structure & v2int doesn't accept negatives)
+            if (xPosition < 0 || xPosition >= itemStructure.Count)
+            {
+                //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of x-coordinate");
+                continue;
+            }
+            if (yPosition < 0 || yPosition >= itemStructure[xPosition].column.Length)
+            {
+                //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of y-coordinate");
+                continue;
+            }
+
+            //If the value of the node at the given coordinates equals 1, create new node, connect to current node, and
+            //add to queue for initialization
+            if (itemStructure[xPosition].column[yPosition] == 1)
+            {
+                //Debug.Log($"Node at position ({xPosition}, {yPosition}) is part of structure. Adding to queue & reached nodes");
+                ItemNode neighborNode = new ItemNode();
+
+                //Connect based on direction (Spagghetti code time!)
+                Vector2Int upDir = new Vector2Int(0,-1);
+                Vector2Int downDir = new Vector2Int(0, 1);
+                Vector2Int leftDir = new Vector2Int(-1, 0);
+                Vector2Int rightDir = new Vector2Int(1, 0);
+
+                if (direction == upDir)
+                {
+                    pivotNode.upNode = neighborNode;
+                }
+                if (direction == downDir)
+                {
+                    pivotNode.downNode = neighborNode;
+                }
+                if (direction == leftDir)
+                {
+                    pivotNode.leftNode = neighborNode;
+                }
+                if (direction == rightDir)
+                {
+                    pivotNode.rightNode = neighborNode;
+                }
+
+                nextNodePosition.Enqueue(new Vector2Int(xPosition, yPosition));
+                nextNode.Enqueue(neighborNode);
+
+                reachedPositions.Add(new Vector2Int(xPosition, yPosition));
+
+                //Debug.Log("Current Nodes Reached:");
+                //foreach (Vector2Int pos in reachedPositions)
+                //{
+                //    Debug.Log($"{pos.x},{pos.y}");
+                //}
+            }
+            else
+            {
+                //Debug.Log($"Node at position ({xPosition}, {yPosition}) is not part of structure. Moving to next position...");
+            }
+        }
+
+        //Loop through queue
+        while (nextNodePosition.Count > 0)
+        {
+            Vector2Int nodePos = nextNodePosition.Dequeue();
+            ItemNode currentNode = nextNode.Dequeue();
+
+            //Debug.Log($"Current node position: ({nodePos.x}, {nodePos.y})");
+
+            //Debug.Log($"Exploring directions...");
+            foreach (Vector2Int direction in directions)
+            {
+                //get neighbor node position
+                int xPosition = nodePos.x + direction.x;
+                int yPosition = nodePos.y + direction.y;
+
+                //If either are negative or greater than the length of structure, then continue to next direction
+                //(the direction is not in structure & v2int doesn't accept negatives)
+                if (xPosition < 0 || xPosition >= itemStructure.Count)
+                {
+                    //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of x-coordinate");
+                    continue;
+                }
+                if (yPosition < 0 || yPosition >= itemStructure[xPosition].column.Length)
+                {
+                    //Debug.Log($"Node at position ({xPosition}, {yPosition}) out of range of item structure because of y-coordinate");
+                    continue;
+                }
+
+                //Debug.Log("Current Nodes Reached:");
+                //foreach (Vector2Int pos in reachedPositions)
+                //{
+                //    Debug.Log($"{pos.x},{pos.y}");
+                //}
+
+
+                //If the position has already been reached, then continue to next position
+                if (reachedPositions.Contains(new Vector2Int(xPosition, yPosition)))
+                {
+                    //Debug.Log($"Node at position ({xPosition}, {yPosition}) has already been reached. moving to next position");
+                    continue;
+                }
+
+                //If the value of the node at the given coordinates equals 1, create new node, connect to current node, and
+                //add to queue for initialization
+                if (itemStructure[xPosition].column[yPosition] == 1)
+                {
+                    //Debug.Log($"Node at position ({xPosition}, {yPosition}) is part of structure. Adding to queue & reached nodes");
+                    ItemNode neighborNode = new ItemNode();
+                    //Connect based on direction (Spagghetti code time!)
+                    Vector2Int upDir = new Vector2Int(0, -1);
+                    Vector2Int downDir = new Vector2Int(0, 1);
+                    Vector2Int leftDir = new Vector2Int(-1, 0);
+                    Vector2Int rightDir = new Vector2Int(1, 0);
+
+                    if (direction == upDir)
+                    {
+                        currentNode.upNode = neighborNode;
+                    }
+                    if (direction == downDir)
+                    {
+                        currentNode.downNode = neighborNode;
+                    }
+                    if (direction == leftDir)
+                    {
+                        currentNode.leftNode = neighborNode;
+                    }
+                    if (direction == rightDir)
+                    {
+                        currentNode.rightNode = neighborNode;
+                    }
+
+                    nextNodePosition.Enqueue(new Vector2Int(xPosition, yPosition));
+                    nextNode.Enqueue(neighborNode);
+
+                    reachedPositions.Add(new Vector2Int(xPosition, yPosition));
+
+                    //Debug.Log("Current Nodes Reached:");
+                    //foreach (Vector2Int pos in reachedPositions)
+                    //{
+                    //    Debug.Log($"{pos.x},{pos.y}");
+                    //}
+                }
+                else
+                {
+                    //Debug.Log($"Node at position ({xPosition}, {yPosition}) is not part of structure. Moving to next position...");
+                }
+            }
+        }
+
+        //Structure translation is completed
+        return pivotNode;
     }
 }

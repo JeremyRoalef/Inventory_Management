@@ -4,14 +4,6 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "Item", menuName = "ScriptableObjects/Item")]
 public class ItemSO : ScriptableObject
 {
-    //Item nodes will determine the structure of the item. The structue is created from the top left-most node having right &
-    //down item nodes.
-    protected class ItemNode
-    {
-        protected ItemNode rightNode;
-        protected ItemNode downNode;
-    }
-
     [Header("Basic Item Properties")]
 
     [SerializeField]
@@ -21,4 +13,16 @@ public class ItemSO : ScriptableObject
     [SerializeField]
     ItemStructureSO itemStructureSO;
     public ItemStructureSO ItemStructureSO { get { return itemStructureSO; } }
+
+    ItemNode pivotNode;
+    public ItemNode PivotNode { get { return pivotNode; } }
+
+    private void OnValidate()
+    {
+        pivotNode = itemStructureSO.TranslateItemStructureToNodes();
+        if (pivotNode == null)
+        {
+            Debug.LogWarning($"{name} does not have a valid structure!");
+        }
+    }
 }

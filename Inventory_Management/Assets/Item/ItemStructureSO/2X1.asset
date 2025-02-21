@@ -13,4 +13,5 @@ MonoBehaviour:
   m_Name: 2X1
   m_EditorClassIdentifier: 
   itemStructure:
-  - row: 0100000001000000
+  - column: 01000000
+  - column: 01000000
